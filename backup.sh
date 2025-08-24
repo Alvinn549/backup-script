@@ -31,7 +31,7 @@ trap 'ec=$?; ln=${BASH_LINENO[0]}; err "Aborted (exit=$ec) at line $ln"; exit $e
 compress_cmd() {
   case "${COMPRESSOR:-zstd}" in
     zstd) echo "zstd -T0 -19 --long=31" ;;
-    xz)   echo "xz -T0 -9e" ;;
+    xz)   echo "xz -T0 -9e -c" ;;
     *)    echo "zstd -T0 -19 --long=31" ;;
   esac
 }
@@ -138,10 +138,24 @@ EXCLUDE_ARGS=($(build_tar_excludes))
 COMPRESSOR_CMD="$(compress_cmd)"
 
 info "Project: archiving -> $ARCHIVE_PATH"
-"${IONICE[@]}" "${NICE[@]}" bash -c "
-  tar --numeric-owner ${EXCLUDE_ARGS[*]} -cf - -C \"${SOURCE_DIR}\" . \
-  | ${COMPRESSOR_CMD} -o \"${ARCHIVE_PATH}\"
-"
+
+case "${COMPRESSOR:-zstd}" in
+  zstd)
+    "${IONICE[@]}" "${NICE[@]}" bash -c "
+      tar --numeric-owner ${EXCLUDE_ARGS[*]} -cf - -C \"${SOURCE_DIR}\" . \
+      | ${COMPRESSOR_CMD} -o \"${ARCHIVE_PATH}\"
+    "
+    ;;
+  xz)
+    "${IONICE[@]}" "${NICE[@]}" bash -c "
+      tar --numeric-owner ${EXCLUDE_ARGS[*]} -cf - -C \"${SOURCE_DIR}\" . \
+      | ${COMPRESSOR_CMD} > \"${ARCHIVE_PATH}\"
+    "
+    ;;
+  *)
+    err "Unknown COMPRESSOR: ${COMPRESSOR:-}"
+    ;;
+esac
 
 # 3) Optional GPG on project archive
 if [[ "${ENABLE_GPG:-no}" =~ ^([Yy][Ee][Ss]|[Yy])$ ]]; then
