@@ -153,7 +153,7 @@ dump_mysql() {
 
   local dump_cmd
   dump_cmd=( mysqldump --defaults-extra-file="'${cnf_file}'" --single-transaction --quick
-             --routines --triggers --events --set-gtid-purged=OFF
+             --routines --triggers --events 
              ${DB_EXTRA_OPTS:-} "'${DB_NAME}'" )
 
   local pipeline_str="${dump_cmd[*]}"
